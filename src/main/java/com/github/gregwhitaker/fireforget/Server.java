@@ -17,11 +17,18 @@
 package com.github.gregwhitaker.fireforget;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
+import io.reactivesocket.RequestHandler;
+import io.reactivesocket.netty.tcp.server.ReactiveSocketServerHandler;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 import java.net.InetSocketAddress;
 
@@ -41,6 +48,7 @@ public class Server {
     }
 
     /**
+     * Starts the server listening for data via a reactivesocket connection.
      *
      * @throws Exception
      */
@@ -55,13 +63,30 @@ public class Server {
     }
 
     /**
-     *
+     * Initializes the reactivesocket channel where this server will be listening for data.
      */
     class ReactiveSocketChannelInitializer extends ChannelInitializer {
 
         @Override
         protected void initChannel(Channel ch) throws Exception {
+            ChannelPipeline pipeline = ch.pipeline();
+            pipeline.addLast(ReactiveSocketServerHandler.create((setupPayload, reactiveSocket) -> {
+                return new RequestHandler.Builder().withFireAndForget(payload -> {
+                    ByteBuf buffer = Unpooled.buffer(payload.getData().capacity());
+                    buffer.writeBytes(payload.getData());
 
+                    byte[] bytes = new byte[buffer.capacity()];
+                    buffer.readBytes(bytes);
+                    System.out.println("Received:" + new String(bytes));
+
+                    return new Publisher<Void>() {
+                        @Override
+                        public void subscribe(Subscriber<? super Void> s) {
+                            // Noop
+                        }
+                    };
+                }).build();
+            }));
         }
     }
 }

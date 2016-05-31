@@ -16,12 +16,38 @@
 
 package com.github.gregwhitaker.fireforget;
 
+import io.reactivesocket.Frame;
+import io.reactivesocket.Payload;
+import org.reactivestreams.Publisher;
+import rx.Observable;
+import rx.RxReactiveStreams;
+
+import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
+
 /**
  *
  */
 public class Client {
 
     public void start() {
+        Publisher<Payload> requestStream = RxReactiveStreams
+                .toPublisher(Observable
+                        .interval(1_000, TimeUnit.MILLISECONDS)
+                        .onBackpressureDrop()
+                        .map(i ->
+                                new Payload() {
+                                    @Override
+                                    public ByteBuffer getData() {
+                                        return ByteBuffer.wrap(("YO " + i).getBytes());
+                                    }
 
+                                    @Override
+                                    public ByteBuffer getMetadata() {
+                                        return Frame.NULL_BYTEBUFFER;
+                                    }
+                                }
+                        )
+                );
     }
 }
