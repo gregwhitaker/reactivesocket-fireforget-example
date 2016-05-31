@@ -13,8 +13,11 @@ public class ExampleRunner {
      * @param args command line arguments
      */
     public static void main(String... args) throws Exception {
-        Server.start(new InetSocketAddress("localhost", 8080));
-        Client.start(new InetSocketAddress("localhost", 8081));
+        Server server = new Server(new InetSocketAddress("localhost", 8080));
+        server.start();
+
+        Client client = new Client();
+        client.start();
 
         Thread.currentThread().join();
     }
