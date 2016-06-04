@@ -24,6 +24,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.reactivesocket.RequestHandler;
 import io.reactivesocket.netty.tcp.server.ReactiveSocketServerHandler;
@@ -33,37 +34,48 @@ import org.reactivestreams.Subscriber;
 import java.net.InetSocketAddress;
 
 /**
- *
+ * Server that receives fire-and-forget messages.
  */
 public class Server {
     private final InetSocketAddress bindAddress;
 
     /**
-     * Initializes the server.
+     * Main entry-point of the Server application.
      *
-     * @param bindAddress socket address where the server will be listening for reactivesocket connections
+     * @param args command line args
+     * @throws Exception
      */
-    public Server(final InetSocketAddress bindAddress) {
+    public static void main(String... args) throws Exception {
+        Server server = new Server(new InetSocketAddress("localhost", 8080));
+        server.start();
+    }
+
+    /**
+     * Initializes this instance of {@link Server}.
+     *
+     * @param bindAddress ip address and port to listen for reactive socket connections
+     */
+    public Server(InetSocketAddress bindAddress) {
         this.bindAddress = bindAddress;
     }
 
     /**
-     * Starts the server listening for data via a reactivesocket connection.
+     * Starts the server.
      *
      * @throws Exception
      */
-    public void start() throws Exception {
+    private void start() throws Exception {
         ServerBootstrap server = new ServerBootstrap();
         server.group(new NioEventLoopGroup(1), new NioEventLoopGroup(4))
                 .channel(NioServerSocketChannel.class)
-                .handler(new LoggingHandler())
+                .handler(new LoggingHandler(LogLevel.INFO))
                 .childHandler(new ReactiveSocketChannelInitializer());
 
         server.bind(bindAddress).sync();
     }
 
     /**
-     * Initializes the reactivesocket channel where this server will be listening for data.
+     * Initializes the netty channel that listens for reactive socket connections.
      */
     class ReactiveSocketChannelInitializer extends ChannelInitializer {
 
@@ -71,21 +83,22 @@ public class Server {
         protected void initChannel(Channel ch) throws Exception {
             ChannelPipeline pipeline = ch.pipeline();
             pipeline.addLast(ReactiveSocketServerHandler.create((setupPayload, reactiveSocket) -> {
-                return new RequestHandler.Builder().withFireAndForget(payload -> {
-                    ByteBuf buffer = Unpooled.buffer(payload.getData().capacity());
-                    buffer.writeBytes(payload.getData());
+               return new RequestHandler.Builder().withFireAndForget(payload -> {
+                   ByteBuf buffer = Unpooled.buffer(payload.getData().capacity());
+                   buffer.writeBytes(payload.getData());
 
-                    byte[] bytes = new byte[buffer.capacity()];
-                    buffer.readBytes(bytes);
-                    System.out.println("Received:" + new String(bytes));
+                   byte[] bytes = new byte[buffer.capacity()];
+                   buffer.readBytes(bytes);
 
-                    return new Publisher<Void>() {
-                        @Override
-                        public void subscribe(Subscriber<? super Void> s) {
-                            // Noop
-                        }
-                    };
-                }).build();
+                   System.out.println("Received: " + new String(bytes));
+
+                   return new Publisher<Void>() {
+                       @Override
+                       public void subscribe(Subscriber<? super Void> s) {
+                           s.onComplete();
+                       }
+                   };
+               }).build();
             }));
         }
     }
