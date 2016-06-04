@@ -114,7 +114,7 @@ public class Client {
                 byte[] bytes = new byte[buffer.capacity()];
                 buffer.readBytes(bytes);
 
-                System.out.println("Sent: " + new String(bytes));
+                System.out.println("Client Sent: " + new String(bytes));
 
                 // Send the messages emitted by the observable to the server via reactive socket.  The messages are
                 // sent using fire-and-forget mode so there is no response expected by the client.

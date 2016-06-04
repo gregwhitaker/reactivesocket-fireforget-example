@@ -90,7 +90,7 @@ public class Server {
                    byte[] bytes = new byte[buffer.capacity()];
                    buffer.readBytes(bytes);
 
-                   System.out.println("Received: " + new String(bytes));
+                   System.out.println("Server Received: " + new String(bytes));
 
                    return new Publisher<Void>() {
                        @Override
